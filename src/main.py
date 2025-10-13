@@ -1,13 +1,12 @@
-# main.py
-from fastapi import FastAPI
-from src.auth.routes import router as auth_router
+from fastapi import FastAPI, Depends
+from src.routes import router as auth_router
+from src.dependencies import get_current_user
+from src.schemas import UserRead
 
-app = FastAPI(title="Medical PDF Analyzer")
+app = FastAPI()
 
-# Подключаем роутер auth
-app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(auth_router)
 
-# Можно добавить корневой маршрут для теста
-@app.get("/")
-def root():
-    return {"message": "Server is running"}
+@app.get("/me", response_model=UserRead)
+def read_me(current_user: UserRead = Depends(get_current_user)):
+    return current_user
