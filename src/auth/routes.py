@@ -1,13 +1,12 @@
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
-from settings import WEB_CLIENT_ID
 
 from fastapi import APIRouter, HTTPException
 from src.auth.schemas import (
     UserCreate, UserLogin, UserRead, TokenResponse,
     ForgotPasswordRequest, ResetPasswordRequest
 )
-from src.settings import supabase
+from src.settings import supabase, WEB_CLIENT_ID
 from supabase_auth.errors import AuthApiError
 from fastapi.responses import JSONResponse
 

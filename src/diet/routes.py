@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from .services import generate_recipe, get_dish_image_url
 from .schemas import RecipeRequest, RecipeWithImageResponse
-from core_functions import require_user
+from src.core_functions import require_user
 
 router = APIRouter(
     prefix="/diet",
@@ -11,7 +11,7 @@ router = APIRouter(
 @router.post("/recipe_with_image", response_model=RecipeWithImageResponse)
 async def recipe_with_image_endpoint(
     request: RecipeRequest,
-    user=Depends(require_user),
+    # user=Depends(require_user),
 ):
     """
     Generate a recipe and fetch the dish image in a single endpoint.

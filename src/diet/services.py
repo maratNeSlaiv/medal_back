@@ -3,7 +3,7 @@ from PIL import Image
 from io import BytesIO
 import re
 import json
-from settings import UNSPLASH_URL, LLM_API_URL, UNSPLASH_ACCESS_KEY
+from src.settings import UNSPLASH_URL, LLM_API_URL, UNSPLASH_ACCESS_KEY
 
 def build_prompt(
     dish_name: str,
