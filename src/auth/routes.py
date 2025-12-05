@@ -1,19 +1,23 @@
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
 from fastapi import APIRouter, HTTPException
-from src.schemas import (
+from src.auth.schemas import (
     UserCreate, UserLogin, UserRead, TokenResponse,
-    ForgotPasswordRequest, ResetPasswordRequest, GoogleAuthRequest
+    ForgotPasswordRequest, ResetPasswordRequest
 )
-from src.supabase_client import supabase
+from src.settings import supabase
 from supabase_auth.errors import AuthApiError
 from fastapi.responses import JSONResponse
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 WEB_CLIENT_ID = os.environ.get("WEB_CLIENT_ID")
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/auth",
+    tags=["auth"]
+)
 
 @router.post("/register", response_model=UserRead)
 def register(user: UserCreate):
@@ -58,8 +62,11 @@ def login(user: UserLogin):
     if not res.user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    return TokenResponse(access_token=res.session.access_token)
-
+    return TokenResponse(
+        access_token=res.session.access_token,
+        refresh_token=res.session.refresh_token,
+        expires_in=res.session.expires_in
+    )
 
 @router.post("/forgot-password")
 def forgot_password(req: ForgotPasswordRequest):
@@ -87,41 +94,41 @@ def reset_password(req: ResetPasswordRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/auth/google")
-async def google_login(body: GoogleAuthRequest):
-    try:
-        # Google token check
-        idinfo = id_token.verify_oauth2_token(
-            body.idToken, grequests.Request(), WEB_CLIENT_ID
-        )
-        email = idinfo.get("email")
+# @router.post("/google")
+# async def google_login(body: GoogleAuthRequest):
+#     try:
+#         # Google token check
+#         idinfo = id_token.verify_oauth2_token(
+#             body.idToken, grequests.Request(), WEB_CLIENT_ID
+#         )
+#         email = idinfo.get("email")
 
-        if not email:
-            return JSONResponse(
-                status_code=400,
-                content={"message": "Email is required"}
-            )
+#         if not email:
+#             return JSONResponse(
+#                 status_code=400,
+#                 content={"message": "Email is required"}
+#             )
 
-        # Search for user in Supabase Auth
-        user_resp = supabase.auth.admin.list_users({"email": email})
-        users = user_resp.data
+#         # Search for user in Supabase Auth
+#         user_resp = supabase.auth.admin.list_users({"email": email})
+#         users = user_resp.data
 
-        if users:
-            user = users[0]
-        else:
-            # Create new user
-            new_user_resp = supabase.auth.admin.create_user({
-                "email": email,
-                "email_confirm": True
-            })
-            user = new_user_resp.user
+#         if users:
+#             user = users[0]
+#         else:
+#             # Create new user
+#             new_user_resp = supabase.auth.admin.create_user({
+#                 "email": email,
+#                 "email_confirm": True
+#             })
+#             user = new_user_resp.user
 
-        return {"success": True, "user": user}
+#         return {"success": True, "user": user}
 
-    except ValueError:
-        return JSONResponse(
-                status_code=400,
-                content={"message": "Invalid ID token"}
-            )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#     except ValueError:
+#         return JSONResponse(
+#                 status_code=400,
+#                 content={"message": "Invalid ID token"}
+#             )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
