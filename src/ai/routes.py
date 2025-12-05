@@ -1,11 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File
-import os
-from dotenv import load_dotenv
-from src.core_functions import require_user
 from .services import medical_image_analysis
-
-load_dotenv()
-WEB_CLIENT_ID = os.environ.get("WEB_CLIENT_ID")
 
 router = APIRouter(
     prefix="/ai",

@@ -1,5 +1,7 @@
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
+from settings import WEB_CLIENT_ID
+
 from fastapi import APIRouter, HTTPException
 from src.auth.schemas import (
     UserCreate, UserLogin, UserRead, TokenResponse,
@@ -8,11 +10,6 @@ from src.auth.schemas import (
 from src.settings import supabase
 from supabase_auth.errors import AuthApiError
 from fastapi.responses import JSONResponse
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-WEB_CLIENT_ID = os.environ.get("WEB_CLIENT_ID")
 
 router = APIRouter(
     prefix="/auth",
