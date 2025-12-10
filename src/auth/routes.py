@@ -3,8 +3,9 @@ from google.auth.transport import requests as grequests
 
 from fastapi import APIRouter, HTTPException
 from src.auth.schemas import (
-    UserCreate, UserLogin, UserRead, TokenResponse,
-    ForgotPasswordRequest, ResetPasswordRequest
+    UserCreate, UserLogin, UserRead, NewTokensResponse,
+    ForgotPasswordRequest, ResetPasswordRequest, 
+    RefreshTokenRequest, RefreshTokenResponse
 )
 from src.settings import supabase, WEB_CLIENT_ID
 from supabase_auth.errors import AuthApiError
@@ -15,12 +16,28 @@ router = APIRouter(
     tags=["auth"]
 )
 
+@router.post("/refresh")
+def refresh_token(data: RefreshTokenRequest):
+    try:
+        old_refresh_token = data.refresh_token
+        response = supabase.auth.refresh_session(refresh_token= old_refresh_token)
+        new_access_token = response['access_token']
+        new_refresh_token = response['refresh_token']
+
+        return RefreshTokenResponse(
+            access_token=new_access_token,
+            refresh_token=new_refresh_token
+        )
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
 @router.post("/register", response_model=UserRead)
 def register(user: UserCreate):
     try:
         res = supabase.auth.admin.create_user({
             "email": user.email,
-            "password": user.password
+            "password": user.password,
+            "email_confirm": True # True for now we don't have SMTP
         })
         created_user = res.user
         return UserRead(id=created_user.id, email=created_user.email)
@@ -33,7 +50,7 @@ def register(user: UserCreate):
         else:
             raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=NewTokensResponse)
 def login(user: UserLogin):
     try:
         res = supabase.auth.sign_in_with_password({
@@ -58,7 +75,7 @@ def login(user: UserLogin):
     if not res.user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    return TokenResponse(
+    return NewTokensResponse(
         access_token=res.session.access_token,
         refresh_token=res.session.refresh_token,
         expires_in=res.session.expires_in
