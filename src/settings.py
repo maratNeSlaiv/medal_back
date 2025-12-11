@@ -13,3 +13,5 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 UNSPLASH_URL = "https://api.unsplash.com/search/photos"
 LLM_API_URL = "https://apifreellm.com/api/chat"
 UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
+
+HUGGING_FACE_API_TOKEN = os.getenv("HUGGING_FACE_API_TOKEN")

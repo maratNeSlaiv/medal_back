@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File
-from .services import medical_image_analysis
+from .services import medical_image_analysis, skin_lesion_classification
+from .schemas import SkinLesionPredictionResponse
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter(
     prefix="/ai",
@@ -10,6 +12,17 @@ router = APIRouter(
 async def process_image(
     file: UploadFile = File(...),
     # user=Depends(require_user)
-):
+    ):
     summary = await medical_image_analysis(file)
     return {"result": summary}
+
+@router.post("/skin_lesion", response_model=SkinLesionPredictionResponse)
+async def skin_lesion(
+    file: UploadFile = File(...),
+    # user=Depends(require_user)
+    ):
+    try:
+        predicted_class, confidence = await skin_lesion_classification(file)
+        return SkinLesionPredictionResponse(predicted_class=predicted_class, confidence=confidence)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
