@@ -13,8 +13,10 @@ async def process_image(
     file: UploadFile = File(...),
     # user=Depends(require_user)
     ):
+    print("We received medical image analysis request")
     summary = await medical_image_analysis(file)
-    return {"result": summary}
+    print(summary)
+    return {"summary": summary}
 
 @router.post("/skin_lesion", response_model=SkinLesionPredictionResponse)
 async def skin_lesion(

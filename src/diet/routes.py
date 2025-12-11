@@ -18,6 +18,7 @@ async def recipe_with_image_endpoint(
     """
     try:
         # 1.
+        print("We went over here # 1")
         recipe = generate_recipe(
             dish_name=request.dish_name,
             purpose=request.purpose,
@@ -29,6 +30,7 @@ async def recipe_with_image_endpoint(
         )
 
         # 2.
+        print("We went over it")
         image_url = get_dish_image_url(request.dish_name)
 
         # 3.

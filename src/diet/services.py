@@ -12,7 +12,7 @@ def build_prompt(
     cuisine: str = None,
     dietary_restrictions: str = None,
     max_cook_time: int = None,
-    include_macros: bool = True
+    include_macros: bool = None
 ) -> str:
     """Construct a dynamic prompt for the LLM."""
     prompt_lines = [f'Generate a recipe for "{dish_name}".']
@@ -39,8 +39,10 @@ def build_prompt(
     return "\n".join(prompt_lines)
 
 def call_llm_api(prompt: str) -> str:
+    URL = "https://apifreellm.com/api/chat"
+    HEADERS = {"Content-Type": "application/json"}
     """Send the prompt to the LLM API, log raw response, and return the text."""
-    response = requests.post(LLM_API_URL, headers={"Content-Type": "application/json"}, json={"message": prompt})
+    response = requests.post(URL, headers=HEADERS, json={"message": prompt})
     
     try:
         result = response.json()
@@ -56,6 +58,21 @@ def call_llm_api(prompt: str) -> str:
         print(f"[LLM RAW RESPONSE]: {result}")
         raise RuntimeError(f"LLM API error: {result.get('error')}")
 
+def clean_llm_text(text: str) -> str:
+    """
+    Убирает лишние Markdown символы и лидирующие маркеры списка.
+    """
+    # убрать жирные и курсивные звездочки
+    text = re.sub(r"\*{1,3}", "", text)
+
+    # убрать лидирующие символы списка: -, *, •, пробелы
+    text = re.sub(r"^[\-\*\•\s]+", "", text, flags=re.MULTILINE)
+
+    # убрать лишние пустые строки
+    text = "\n".join([line.strip() for line in text.splitlines() if line.strip()])
+
+    return text
+    
 def extract_recipe_adaptive(text: str) -> dict:
     """Adaptive parser for LLM-generated recipes. Extracts ingredients, steps, time, servings, macros."""
     recipe = {}
@@ -71,6 +88,7 @@ def extract_recipe_adaptive(text: str) -> dict:
             line = line.strip()
             if not line:
                 continue
+            # убрать лидирующие символы вроде "-", "*", "•"
             line = re.sub(r"^[\-\*\•\s]+", "", line)
             if line:
                 ingredients.append(line)
@@ -89,6 +107,7 @@ def extract_recipe_adaptive(text: str) -> dict:
             line = line.strip()
             if not line:
                 continue
+            # убрать лидирующую нумерацию: 1., 1), 1- и т.п.
             line = re.sub(r"^\d+[\.\)\-]?\s*", "", line)
             if line:
                 steps.append(line)
@@ -96,7 +115,8 @@ def extract_recipe_adaptive(text: str) -> dict:
 
     # --- Time ---
     time_match = re.search(
-        r"(?:\*+)?(?:time|total time)(?:\*+)?\s*:\s*(\d+)", text, re.I
+        r"(?:\*+)?(?:time|total time)(?:\*+)?\s*:\s*(?:about\s*)?(\d+)(?:\s*-\s*\d+)?", 
+        text, re.I
     )
     recipe["time_minutes"] = int(time_match.group(1)) if time_match else None
 
@@ -120,6 +140,7 @@ def extract_recipe_adaptive(text: str) -> dict:
             "fats": int(macros_match.group(3))
         }
     else:
+        # Альтернатива: искать по отдельности
         macro_alt = re.findall(r"(?:protein|carbs|fats)\s*(\d+)g", text, re.I)
         if len(macro_alt) == 3:
             recipe["macros"] = {"protein": int(macro_alt[0]), "carbs": int(macro_alt[1]), "fats": int(macro_alt[2])}
@@ -138,9 +159,14 @@ def generate_recipe(
     include_macros: bool = None
 ) -> dict:
     """Main function: generates a structured recipe for a single dish."""
+    print("Going over prompt")
     prompt = build_prompt(dish_name, purpose, servings, cuisine, dietary_restrictions, max_cook_time, include_macros)
+    print("Going over raw_text")
     raw_text = call_llm_api(prompt)
-    recipe = extract_recipe_adaptive(raw_text)
+    print("Going over clean_text")
+    clean_text = clean_llm_text(raw_text)
+    print("Going over recipe")
+    recipe = extract_recipe_adaptive(clean_text)
     return recipe
 
 def get_dish_image_url(dish_name: str) -> str | None:

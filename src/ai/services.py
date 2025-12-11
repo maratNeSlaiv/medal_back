@@ -5,7 +5,6 @@ import pytesseract
 import httpx
 import json
 from PIL import Image, UnidentifiedImageError
-
 import torch
 from src.model_loader import ModelRegistry
 
@@ -19,15 +18,21 @@ async def generate_summary(text: str) -> str:
     
     url = "https://apifreellm.com/api/chat"
     headers = {"Content-Type": "application/json"}
-    data = {
-        "message": f"Analyze the following medical text and summarize the main points:\n{text}"
-    }
+    
+    prompt = (
+        "You are a medical assistant. Analyze the following medical report text and summarize **only abnormal or clinically significant results**. "
+        "Ignore values that are within the normal range. Keep the summary concise, in 3-5 short bullet points if possible. "
+        "If all results are normal or there is nothing to be concerned about, just say: "
+        "'All results are within normal limits, no concerns.'\n\n"
+        f"{text}"
+    )
+    
+    data = {"message": prompt}
     
     async with httpx.AsyncClient(timeout=10) as client:
         try:
             response = await client.post(url, headers=headers, json=data)
-
-            # безопасное преобразование ответа в JSON
+            
             try:
                 result = response.json()
             except json.JSONDecodeError:
@@ -39,7 +44,7 @@ async def generate_summary(text: str) -> str:
                 return f"Error from AI API: {result.get('error', 'unknown error')}"
         except Exception as e:
             return f"Error calling AI API: {str(e)}"
-
+        
 async def medical_image_analysis(file: UploadFile = File(...)) -> str:
     file_bytes = await file.read()
     img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
@@ -47,16 +52,25 @@ async def medical_image_analysis(file: UploadFile = File(...)) -> str:
     summary = await generate_summary(extracted_text)
     return summary
 
+
+
+from pillow_heif import register_heif_opener
+register_heif_opener()
+
 async def skin_lesion_classification(file: UploadFile) -> tuple[str, float]:
     img_bytes = await file.read()
     if not img_bytes:
         return {"error": "Empty file"}
 
     try:
+
+        print("managed till here")
         image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     except (UnidentifiedImageError, OSError) as e:
+
+        print("managed till here#2")
         return {"error": "Cannot open image, invalid format"}
-    
+
     try:
         inputs = ModelRegistry.melanoma_processor(images=image, return_tensors="pt")
         inputs = {k: v.to(ModelRegistry.device) for k, v in inputs.items()}
