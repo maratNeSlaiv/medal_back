@@ -35,3 +35,10 @@ typing_extensions==4.15.0
 uvicorn==0.37.0
 websockets==15.0.1
 yarl==1.22.0
+
+Pillow
+pillow-heif
+pytesseract
+transformers
+torch
+requests
